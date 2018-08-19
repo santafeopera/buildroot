@@ -13,9 +13,9 @@ BR2_TARGET_GENERIC_ROOT_PASSWD="asdfasdf"
 BR2_SYSTEM_DHCP="eth0"
 BR2_TARGET_TZ_INFO=y
 BR2_TARGET_LOCALTIME="America/New_York"
-BR2_ROOTFS_OVERLAY="board/raspberrypi3/rootfs_overlay"
-BR2_ROOTFS_POST_BUILD_SCRIPT="board/raspberrypi3/post-build.sh"
-BR2_ROOTFS_POST_IMAGE_SCRIPT="board/raspberrypi3/post-image.sh"
+BR2_ROOTFS_OVERLAY="board/santafeopera/rootfs_overlay"
+BR2_ROOTFS_POST_BUILD_SCRIPT="board/santafeopera/post-build.sh"
+BR2_ROOTFS_POST_IMAGE_SCRIPT="board/santafeopera/post-image.sh"
 BR2_ROOTFS_POST_SCRIPT_ARGS="--add-pi3-miniuart-bt-overlay --gpu_mem_1024=200"
 BR2_LINUX_KERNEL=y
 BR2_LINUX_KERNEL_CUSTOM_TARBALL=y

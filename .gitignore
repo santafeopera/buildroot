@@ -4,7 +4,6 @@
 /.config.cmd
 /.config.old
 /..config.tmp
-/.config
 *.depend
 *.o
 /*.patch
@@ -13,3 +12,7 @@
 *.rej
 *~
 *.pyc
+.config.bak
+ROOTFS_COPY.md
+config.diffs
+vars.txt

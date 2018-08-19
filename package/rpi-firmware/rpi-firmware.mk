@@ -41,6 +41,11 @@ define RPI_FIRMWARE_INSTALL_IMAGES_CMDS
 	$(INSTALL) -D -m 0644 $(@D)/boot/fixup$(BR2_PACKAGE_RPI_FIRMWARE_BOOT).dat $(BINARIES_DIR)/rpi-firmware/fixup.dat
 	$(INSTALL) -D -m 0644 package/rpi-firmware/config.txt $(BINARIES_DIR)/rpi-firmware/config.txt
 	$(INSTALL) -D -m 0644 package/rpi-firmware/cmdline.txt $(BINARIES_DIR)/rpi-firmware/cmdline.txt
+
+	# Hardcoded dt-blob.bin, for now.  Petonic [2018-08-17 FRI 12:35]
+	$(INSTALL) -D -m 0644 package/rpi-firmware/dt-blob.bin $(BINARIES_DIR)/rpi-firmware/dt-blob.bin
+	# ---- End Petonic mods
+
 	$(RPI_FIRMWARE_INSTALL_DTB)
 	$(RPI_FIRMWARE_INSTALL_DTB_OVERLAYS)
 endef

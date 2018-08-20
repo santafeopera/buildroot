@@ -7,6 +7,18 @@ BOARD_NAME="$(basename ${BOARD_DIR})"
 GENIMAGE_CFG="${BOARD_DIR}/genimage-${BOARD_NAME}.cfg"
 GENIMAGE_TMP="${BUILD_DIR}/genimage.tmp"
 
+
+#######################
+## Testing to see if I understand the build concept to create
+## New files in /boot.
+## Petonic [2018-08-17 FRI 11:20]
+#######################
+
+if [ -d "${BINARIES_DIR}/rpi-firmware" ]; then
+	echo "This is a test file: `date`" > "${BINARIES_DIR}/rpi-firmware/bletch.txt"
+fi
+
+
 for arg in "$@"
 do
 	case "${arg}" in
@@ -23,11 +35,11 @@ __EOF__
 		--aarch64)
 		# Run a 64bits kernel (armv8)
 		sed -e '/^kernel=/s,=.*,=Image,' -i "${BINARIES_DIR}/rpi-firmware/config.txt"
-		if ! grep -qE '^arm_64bit=1' "${BINARIES_DIR}/rpi-firmware/config.txt"; then
+		if ! grep -qE '^arm_control=0x200' "${BINARIES_DIR}/rpi-firmware/config.txt"; then
 			cat << __EOF__ >> "${BINARIES_DIR}/rpi-firmware/config.txt"
 
 # enable 64bits support
-arm_64bit=1
+arm_control=0x200
 __EOF__
 		fi
 
@@ -50,6 +62,14 @@ __EOF__
 done
 
 rm -rf "${GENIMAGE_TMP}"
+
+echo "ZYXXY: Current Directory is: `pwd`"
+echo "		XYZZY:  TARGET_DIR = <${TARGET_DIR}>"     
+echo "		XYZZY:  GENIMAGE_TMP = <${GENIMAGE_TMP}>"
+echo "		XYZZY:  BINARIES_DIR = <${BINARIES_DIR}>"
+echo "		XYZZY:  BINARIES_DIR = <${BINARIES_DIR}>"
+echo "		XYZZY:  GENIMAGE_CFG = <${GENIMAGE_CFG}>"
+
 
 genimage                           \
 	--rootpath "${TARGET_DIR}"     \

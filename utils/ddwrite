@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+
+"""DDWRITE -- Copy TO SD Card from .ISO Image
+
+ARCHITECTURE: Ubuntu
+
+Usage:
+  ddwrite [-hbx] <device> <image_file>
+  ddwrite [-hbx] -a <image_file>
+
+Options:
+  -h --help     Show this screen.
+  -b --bell     Ring terminal bell when done
+  -x --execute  Actually execute the command (w/o is only a preview)
+  -a --auto     Auto use the last created /dev/sd? device
+
+
+
+<device> can be in the form of "/dev/sd[a-z]", "sd[a-z]" or simply "[a-z]".
+
+DDWRITE will check to make sure that you're not writing to the
+internal root filesystem, even if the -x flag isn't used.  Comforting.
+
+Note: Make sure the user is part of the "disk" group by issuing:
+   # sudo adduser currentusername disk
+
+"""
+# TODO: Make -x functional (was a -v for preview)
+
+from docopt import docopt
+import sys, io, os
+import numbers
+import subprocess
+import re
+
+
+if __name__ == '__main__':
+  arguments = docopt(__doc__, version='ddwrite v1.0 (ubuntu)')
+  # print(arguments)
+  device=arguments['<device>']
+  imageFile=arguments['<image_file>']
+  bell = arguments['--bell']
+
+  if arguments['--auto']:
+    device='-a'
+
+  #
+  # Normalize DEVICE to "/dev/rdiskN" form.
+  #
+  if "/dev/" in device:
+    pass     #Good to go
+  # If they typed just an alpha, then massage it
+  elif device[0].islower() and len(device) == 1:
+    device = "/dev/sd" + device
+  # Autoassign from creation date
+  elif device == "-a":
+    cmd='ls -1t /dev/sd? | head -1'
+    try:
+      lsout = subprocess.check_output(cmd, shell=True)
+    except:
+      print('{}: --auto, error finding device', sys.argv[0])
+      sys.exit(2)
+    device=lsout.decode("utf-8").split('\n')[0]
+  #Assume it's just the part after "/dev/"
+  else:
+    device = "/dev/" +device
+    print('... using {} as device'.format(device))
+
+  #
+  # Make sure it's not /dev/sda or /dev/sdb - system disks
+  #
+  match = re.search(r'/dev/sd[ab]', device)
+  if match:
+    print('{}: should not write to /dev/sd[ab] as they are system disks'
+           ': {}'.format(
+               sys.argv[0], device),
+           file=sys.stderr)
+    if arguments['--auto']:
+      print('\tdevice was auto-assigned, but did not find any other disk devs',
+            file=sys.stderr)
+      print('\tIs the SDCard mounted using RPIBOOT?',
+            file=sys.stderr)
+    print('Aborting...', file=sys.stderr)
+    sys.exit(9)
+
+  #Find out info on the requested disk
+  try:
+    dutout = subprocess.check_output(['sudo', 'fdisk', '-l', device])
+  except subprocess.CalledProcessError as e:
+    out = e.stdout.decode("utf-8") if e.stdout else ""
+    out = out + (e.stderr.decode("utf-8") if e.stderr else "")
+    out = out.rstrip('\n')
+    print("ddwrite: Error trying to get fdisk, info on <{}>:\n{}".
+          format(device, out))
+    sys.exit(2)
+  # Get the disksize, and type of the disk from $dutout
+  fs_list = []
+  for line in dutout.decode("utf-8").split('\n'):
+    # print('\tDBG: Line: {}'.format(line))
+    match = re.match(r'^\s*Disk[^:]+:\s*([^,]+),', line)
+    if match:
+      diskSize = match.group(1)
+      # print('{}: {}'.format(device, diskSize))
+    # Keep a list of all individual filesystems on the disk
+    match = re.match(r'^{}([0-9]+).*$'.format(device), line)
+    if match:
+      fs_list.append('{}{}'.format(device, match.group(1)))
+      # print('\t{}'.format(line))
+      # print('DBG: device is {}'.format(fs_list[-1]))
+
+  #
+  # Now check the image file to make sure it's readable
+  #
+  try:
+    with open(imageFile, "r") as infile:
+      pass
+    statinfo = os.stat(imageFile)
+    imageSize = statinfo.st_size
+    diskSizeFriendly = "{:.1f}MB".format(imageSize / (1000 * 1000))
+  except IOError:
+    print("ddwrite: error: image_file <{}> not readable".
+          format(imageFile), file=sys.stderr)
+    sys.exit(5)
+
+  # print('\t.......................')
+
+  # Now, do the work:
+  #
+  #
+  # Try to unmount the disk if possible.  Ignore errors (may
+  # not be mounted)
+  #
+  for fs in fs_list:
+    try:
+      subprocess.check_output(["sudo", "umount", fs],
+                              stderr=subprocess.DEVNULL)
+      print('\tUnmounted {}'.format(fs))
+    except subprocess.CalledProcessError:
+      pass
+      # Ignore errors
+
+
+  # sudo dd bs=64m if=/dev/rdisk1 | pv -B 64m -s 8g |
+  #       dd bs=64m of=SFODisplay-2017-01-22.iso
+  #cmd = "dd bs=32M if={} of={} status=progress iflag=noctty oflag=noctty".format(
+  #    imageFile, device)
+  # dd if=output/images/sdcard.img ibs=1M status=none |
+  #   pv -s 411042304 -w 80 | dd of=/dev/sdc obs=1M oflag=direct status=none
+  cmd = ("dd if={} ibs=1M status=none oflag=noctty | "
+         "pv -s {} -w 80 | "
+         "dd of={} obs=1M oflag=direct status=none").format(
+             imageFile, imageSize, device)
+
+  try:
+    print("#### Disk size to copy is {}\n{}".format(diskSizeFriendly, cmd))
+    if not arguments['--execute']:
+      print('# -- Preview only, use "-x" or "--execute" to run command')
+      sys.exit(0)
+    else:
+      cp = subprocess.run(cmd, shell=True, stderr=sys.stdout,
+                     check=True, universal_newlines=True)
+  except KeyboardInterrupt:
+    print("ddwrite: keyboard interrupt, exiting", file=sys.stderr)
+    sys.exit(-2)
+  except Exception as e:
+    print("ddwrite: error running dd command:{}\n{}".format(
+        cmd, repr(e)), end='')
+    sys.exit(9)
+
+  if arguments['--bell']:
+    sys.stdout.write('\a')
+
+
+  sys.exit(0)

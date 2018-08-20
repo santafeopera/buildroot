@@ -2,19 +2,80 @@
 
 This file describes the features/functions of the first working Buildroot configuration for the Santa Fe Opera e-libretto program.  The goal is to provide a tight kernel and OS image to run the functionality that we need.
 
-This BuildRoot source is based and mirrored from the [latest official BuildRoot repo]( http://git.buildroot.net/buildroot/).  I'm using the ```2018.05.x``` branch of that repo.  *At the time of this writing, this is the most current stable release of BuildRoot.
+This BuildRoot source is based and mirrored from the [latest official BuildRoot repo]( http://git.buildroot.net/buildroot/).  I've made a new branch derived from the ```2018.05.x``` branch of that repo.  *At the time of this writing, this is the most current stable release of BuildRoot.
+
+The Santa Fe Opera working branch is called ```2018.05.sfe```.  To check it out into a working directory called ```br-sfe```, you'd run the following command:
+
+```
+git clone -b 2018.05.sfe git@github.com:santafeopera/buildroot.git br-sfe
+```
+
+Type "make" from that ```br-sfe``` directory, and it should make a new compute module image for you that you can burn onto the CM's using dd or something.
+
+## Note on the ```.config``` file
+
+Normally, the ```.config``` file in the base $BR directory is in .gitignore and not stored on the repo.  The intent is that you'd check out the BuildRoot git repo, perform a ```
 
 At the time of writing, the SD Card image size is just under 400MB.  The target's root filesystem has 107M free.  We could make this bigger if our Serf programs get big, but it's unlikely too, really.
 
 # Getting Started
 ```$BR```  the root of the BuildRoot tree that you checked out from Github.  For my lab machine, it's located at ```~/br/2018-05-v3-sfe```, created by issuing the following command from the ```~/br``` directory.  It was my third version of trying to do this, so that's why the v3, but feel free to use any directory name, obviously.
 
+## Pull the SFO branch from the repo
+
+You must use the ```-b 2018-05-sfe``` option to git clone in order to grab the right source files.
+
 1. Clone the SFO BuildRoot repo:
 ```
- git clone git@github.com:santafeopera/buildroot.git 2018-05-v3-sfe
+ git clone -b 2018-05-sfe git@github.com:santafeopera/buildroot.git sfe1
 ```
 
-2. Type
+  This command will clone the proper branch of the repo and put it into the directory called ```sfe1``` relative to your current directory.
+
+2. Create the default "santafeopera" config:
+```
+cd sfe1
+make santafeopera_defconfig
+```
+
+3. Create the image file...
+
+  This will take a long time, even on a beefy x86 server.  Close to an hour to build it entirely from source.
+```
+make
+```
+
+4. Burn the image file
+
+  Use the "rpiboot" process to put the Compute Module on an IO Development Kit board into "USB Drive" mode.  That way, it acts just like a USB memory stick.
+
+  Use the standard Linux ```dd``` command to burn the image onto a Compute Module.  Alternatively, look in the directory ```$BR/utils``` for a Python3 script called ```ddwrite```.
+
+  ```ddwrite``` has some convenience and safety functions to make burning a Compute Module safer and easier, with realtime progress reporting. Feel free to put it into your ~/bin directory.
+
+### Customizing the installation
+
+If you want to add more packages, you can do a
+
+```
+make menuconfig
+```
+
+to use this, you have to have the ```ncurses``` package installed on the host system. To do this on Ubuntu, you'd type:
+
+```
+sudo apt-get update && sudo apt-get install ncurses5
+```
+
+Once you've added or taken away packages or otherwise changed the configuration, just go back to the buildroot base directory and type ```make```.
+
+#### Buildroot Hygiene
+
+Sometimes, for some changes to be effected, you actually have to clean up the directory and then rebuild prettyu close to scratch.  Examples of this are if you want to delete files from the ROOTFS overlay (located in ```$BR/boards/santafeopera/rootfs_overlay```), and maybe others.
+
+Just do a ```make clean``` and then a ```make``` will rebuild the target system image.
+
+Note, that doing a ```make clean``` will delete the $BR/.config file and any customizations that are not part of the default ```santafeopera``` config.
 
 # Misc Notes
 
@@ -25,7 +86,7 @@ At the time of writing, the SD Card image size is just under 400MB.  The target'
 * Bonjour/MDNS/Avahi works, so you can do ```ping cm01.local```
 * OpenSSHD (and OpenSSH) are configured.  You can remote login to "cm01".
 * Root password is ```asdfasdf```.
-* SSH public keys are entered for my local NYC machines.  The place to add to this is in ```$BR/boards/raspberrypi3/rootfs_overlay/root/.ssh/authorized_keys```.  Then, the next time that you rebuild the kernel, you'll be able to login without a password.
+* SSH public keys are entered for my local NYC machines.  The place to add to this is in ```$BR/boards/santafeopera/rootfs_overlay/root/.ssh/authorized_keys```.  Then, the next time that you rebuild the kernel, you'll be able to login without a password.
 
 ## Misc Utilities Enabled (as requested by Scott)
 
@@ -54,7 +115,7 @@ At the time of writing, the SD Card image size is just under 400MB.  The target'
 
 * I haven't looked into cross-compiling a Qt5 C++ program yet.  [This is a good reference page](http://www.jumpnowtek.com/rpi/Raspberry-Pi-Systems-with-Buildroot.html), and specifically, the section on ```Using the Buildroot cross-toolchain``` towards the end of that page.  I've cross compiled a hello world (shell only, not Qt) on my x85 Ubuntu box and it worked well on the CB.
 
-* There's a simple Hello-World C program that is build using the cross compiler that BuildRoot generates.  The C source and makefile are located in ```$BR/board/raspberrypi3/src/hwc```.
+* There's a simple Hello-World C program that is build using the cross compiler that BuildRoot generates.  The C source and makefile are located in ```$BR/board/santafeopera/src/hwc```.
 
   Note that the compiler that the Makefile uses is the cross-compiler, and it's located at ```$BR/output/host/usr/bin/arm-linux-gcc```.
 
@@ -64,10 +125,8 @@ At the time of writing, the SD Card image size is just under 400MB.  The target'
 
 * I have not gotten the touchscreen to work yet.  Haven't really tried.  That's next on my list, most likely after some help from Scott.
 
-# Near Futures
+# TTD
+
+* Touchscreen, as mentioned above.
 
 * Turns out that ```ZeroMQ``` as well as the multi-cast ```NORM``` protocol have pre-built packages in the latest BuildRoot release (which is the one that this is built on).  I'll be working on getting that right.
-
-* Before too long, I'll reconfigure this Buildroot setup to be proper.  We'll have our own ```$BR/boards/santafeopera/``` directory instead of building out of the directory ```$BR/boards/raspberrypi3``` like we currently do.
-
-# TTD:

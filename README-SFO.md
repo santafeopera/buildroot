@@ -27,7 +27,7 @@ You must use the ```-b 2018-05-sfe``` option to git clone in order to grab the r
 
 1. Clone the SFO BuildRoot repo:
 ```
- git clone -b 2018-05-sfe git@github.com:santafeopera/buildroot.git sfe1
+ git clone -b 2018.05.sfe git@github.com:santafeopera/buildroot.git sfe1
 ```
 
   This command will clone the proper branch of the repo and put it into the directory called ```sfe1``` relative to your current directory.
